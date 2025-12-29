@@ -54,8 +54,8 @@ jobs:
           HEAD_BRANCH: ${{ github.head_ref }}
           REPO_PATH: ${{ github.workspace }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          EBS_LOAD_BALANCER_NAME: ${{ secrets.EBS_LOAD_BALANCER_NAME || 'poc-ebs-alb' }}
-          EBS_TARGET_GROUP_NAME: ${{ secrets.EBS_TARGET_GROUP_NAME || 'poc-ebs-tg' }}
+          EBS_LOAD_BALANCER_NAME: ${{ secrets.EBS_LOAD_BALANCER_NAME }}
+          EBS_TARGET_GROUP_NAME: ${{ secrets.EBS_TARGET_GROUP_NAME }}
         run: node src/index.js
       
       - name: Upload report artifacts
