@@ -1,0 +1,87 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+      
+      - name: Deploy to Elastic Beanstalk
+        if: env.EB_APP_NAME != ''
+        env:
+          EB_APP_NAME: ${{ secrets.EB_APP_NAME }}
+          EB_ENV_NAME: ${{ secrets.EB_ENV_NAME || 'poc-ebs-env' }}
+        run: |
+          # Install EB CLI
+          pip install awsebcli
+          
+          # Initialize if needed
+          if [ ! -f .elasticbeanstalk/config.yml ]; then
+            eb init -p node.js $EB_APP_NAME --region ${{ secrets.AWS_REGION || 'us-east-1' }}
+          fi
+          
+          # Deploy
+          eb deploy $EB_ENV_NAME
+      
+      - name: Deploy to ECS (Alternative)
+        if: env.ECS_CLUSTER != ''
+        env:
+          ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+          ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+        run: |
+          # Build Docker image
+          docker build -t $ECR_REPOSITORY:latest .
+          
+          # Login to ECR
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION || 'us-east-1' }} | docker login --username AWS --password-stdin $ECR_REPOSITORY
+          
+          # Push image
+          docker push $ECR_REPOSITORY:latest
+          
+          # Update ECS service
+          aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force-new-deployment
+      
+      - name: Deploy to EC2 (Alternative)
+        if: env.EC2_INSTANCE_ID != ''
+        env:
+          EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
+          EC2_USER: ${{ secrets.EC2_USER || 'ec2-user' }}
+        run: |
+          # Create deployment package
+          zip -r deployment.zip . -x "*.git*" "node_modules/*"
+          
+          # Copy to EC2 (requires SSH key in secrets)
+          scp -i ${{ secrets.EC2_SSH_KEY }} deployment.zip $EC2_USER@${{ secrets.EC2_HOST }}:/tmp/
+          
+          # SSH and deploy
+          ssh -i ${{ secrets.EC2_SSH_KEY }} $EC2_USER@${{ secrets.EC2_HOST }} << 'EOF'
+            cd /var/www/app
+            unzip -o /tmp/deployment.zip
+            npm install --production
+            pm2 restart all
+          EOF
+
