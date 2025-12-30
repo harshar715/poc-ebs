@@ -15,11 +15,13 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
+  // test
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
 // Endpoint 1: Get Users
 app.get('/v1/users', (req, res) => {
+  // test
   const users = [
     { id: 1, name: 'John Doe', email: 'john@example.com' },
     { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
@@ -38,6 +40,7 @@ app.get('/v1/users', (req, res) => {
 
 // Endpoint 2: Get User by ID
 app.get('/v1/users/:id', (req, res) => {
+  // test
   const userId = parseInt(req.params.id);
   
   // Simulate database lookup
@@ -63,6 +66,7 @@ app.get('/v1/users/:id', (req, res) => {
 
 // Endpoint 3: Get Products
 app.get('/v1/products', (req, res) => {
+  // test
   const products = [
     { id: 1, name: 'Product A', price: 29.99, category: 'Electronics' },
     { id: 2, name: 'Product B', price: 49.99, category: 'Clothing' },
@@ -80,6 +84,7 @@ app.get('/v1/products', (req, res) => {
 
 // Endpoint 4: Get Orders
 app.get('/v1/orders', (req, res) => {
+  // test
   const { status, limit = 10 } = req.query;
   
   const orders = [

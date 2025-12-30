@@ -16,25 +16,29 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Fetch base branch
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }} --depth=100
+          git fetch origin ${{ github.event.pull_request.head.ref }} --depth=100
       
       - name: Checkout PR-Report
         uses: actions/checkout@v3
         with:
           repository: ${{ secrets.PR_REPORT_REPO || 'your-org/PR-Report' }}
           path: PR-Report
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PR_REPORT_TOKEN || secrets.GITHUB_TOKEN }}
       
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: PR-Report/package-lock.json
       
       - name: Install dependencies
         working-directory: PR-Report
-        run: npm ci
+        run: npm install
       
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -54,13 +58,15 @@ jobs:
           HEAD_BRANCH: ${{ github.head_ref }}
           REPO_PATH: ${{ github.workspace }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           EBS_LOAD_BALANCER_NAME: ${{ secrets.EBS_LOAD_BALANCER_NAME }}
           EBS_TARGET_GROUP_NAME: ${{ secrets.EBS_TARGET_GROUP_NAME }}
         run: node src/index.js
       
       - name: Upload report artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: pr-metrics-report
           path: PR-Report/reports/*.json
